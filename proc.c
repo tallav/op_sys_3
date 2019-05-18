@@ -111,6 +111,8 @@ found:
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
+ 
+  if (!createSwapFile(p)) panic("swap filed wasn't created!");
 
   return p;
 }
@@ -530,5 +532,87 @@ procdump(void)
         cprintf(" %p", pc[i]);
     }
     cprintf("\n");
+  }
+}
+
+
+void* choosePageToSwapOut(){
+  // todo: choose which page to swap-out, update (add it to this array) the procSwappedFiles data structure and flush the TLB
+
+}
+
+// Executes page-out from RAM to Disk.
+// Updates the procSwappedFiles array and adds the meta-date of the page to the file   
+int swapOut(){
+ struct proc* curProc = myproc();
+ pte_t* virtualAdd = choosePageToSwapOut();
+ char* buffer = (char*)virtualAdd;
+ int offset = -1;
+ for (int i=0; i<sizeof(curProc->procSwappedFiles); i++){ // find cell that isn't occupied in the array
+   if (curProc->procSwappedFiles[i].isOccupied == 0){
+      curProc->procSwappedFiles[i].va = virtualAdd;
+      curProc->procSwappedFiles[i].offsetInFile = i*(sizeof(buffer))+1;
+      offset = curProc->procSwappedFiles[i].offsetInFile;
+      break;
+   }
+ }
+ if (offset == -1)
+    return -1;
+ offset = writeToSwapFile(curProc, buffer, offset, sizeof(buffer));
+ kfree(virtualAdd); // Free the page of physical memory pointed at by the virtualAdd
+ curProc->numOfPhysPages--;
+ return offset;
+}
+
+// Executes page-in from Disk to RAM.
+int swapIn(pde_t *pde){
+ struct proc* curProc = myproc();
+ int offset = -1;
+ for (int i=0; i<sizeof(curProc->procSwappedFiles); i++){ // find the cell that contains the meta-data of this page
+   if (curProc->procSwappedFiles[i].va == pde){
+      curProc->procSwappedFiles[i].va = 0;
+      offset = curProc->procSwappedFiles[i].offsetInFile;
+      curProc->procSwappedFiles[i].isOccupied = 0; // cell is not needed anymore
+      break;
+   }
+ }
+ char* buffer;
+ readFromSwapFile(curProc, buffer, offset+1, sizeof(int));
+ //todo: permissions to files
+ curProc->numOfPhysPages--;
+
+
+}
+
+// Gets the virtual address of the page which we need to bring from the disk.
+int swap(pde_t *pde){
+ if (swapOut() < 0) panic("problem with swapping out file");
+ lcr3(v2p (myproc()->pgdir)); // Refresh TLB after page-out
+ swapIn(pde);
+}
+
+
+// This function checks if T_PGFLT received beacuse the MMU fails to access the required page
+// or other reason.
+int checkIfNeedSwapping(){
+  struct proc *curProc = myproc();
+  uint faultingAddress = rcr2(); // contains the address that register %cr2 holds
+  //pde_t *physAdd;
+  pde_t *pde;
+  pde = &curProc->pgdir[PDX(&faultingAddress)];
+  if (*pde & PTE_P){
+      return 0; // Page is Present, swapping isn't needed
+  }
+  if (*pde & PTE_PG) { // Page was paged-out to disk, paged-in is needed
+     if (curProc->numOfPhysPages >= MAX_PSYC_PAGES){ // Check if swapping is needed
+        swap(pde);
+     }
+     else{
+        swapIn(pde);
+     }
+  }
+  else{
+    walkpgdir(curProc->pgdir,&faultingAddress,1);
+    curProc->numOfPhysPages++;
   }
 }
