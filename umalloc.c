@@ -152,7 +152,7 @@ int protect_page(void* ap){
   struct plink *pl = plink_freep;
   while(pl){
     if(pl == ap){
-      // add system call 
+      protectPage(pl);
       return 1;
     }
     pl = pl->next;

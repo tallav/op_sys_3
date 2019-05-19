@@ -390,3 +390,55 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
 //PAGEBREAK!
 // Blank page.
 
+// This function checks if T_PGFLT received beacuse the MMU fails to access the required page
+// or other reason.
+int checkIfNeedSwapping(){
+  struct proc *curProc = myproc();
+  uint faultingAddress = rcr2(); // contains the address that register %cr2 holds
+  pde_t *pde;
+  pte_t *pgtab;
+  pde = &curProc->pgdir[PDX(&faultingAddress)];
+  if (*pde & PTE_P){
+    pgtab = (pte_t*)P2V(PTE_ADDR(*pde));; // Page is Present, swapping isn't needed
+  }else{
+    return -1;
+  }
+  if (*pgtab & PTE_PG) { // Page was paged-out to disk, paged-in is needed
+    if (curProc->numOfPhysPages >= MAX_PSYC_PAGES){ // Check if swapping is needed
+      swap(pgtab, faultingAddress);
+    }
+    else{
+      swapIn(pgtab, faultingAddress);
+    }
+  }
+  else{
+    cprintf("segmentation fault\n");
+    curProc->killed = 1;
+    return -1;
+  }
+  return 1;
+}
+
+// Executes page-in from Disk to RAM.
+int swapIn(uint *pte, uint faultAdd){
+  struct proc* curProc = myproc();
+  char* mem = kalloc(); // allocate physical memory (size of page)
+  char* pageStart = (char*)PGROUNDDOWN(faultAdd); // gets the start point of the page (removes offset)
+  int maped = mappages(curProc->pgdir,pageStart,PGSIZE,V2P(mem), PTE_U); // mapes the virtual memory of the page fault to the new allocated memory
+  if(!maped)
+    return -1;
+  int offset = -1;
+  char* pa = (char*)(PTE_ADDR(*pte));
+  char* va = (char*)(P2V((uint)(pa)));
+  for (int i=0; i<MAX_TOTAL_PAGES; i++){ // find the cell that contains the meta-data of this page
+    if (curProc->procSwappedFiles[i].va == va){
+      curProc->procSwappedFiles[i].va = 0;
+      offset = curProc->procSwappedFiles[i].offsetInFile;
+      curProc->procSwappedFiles[i].isOccupied = 0; // cell is not needed anymore
+      break;
+    }
+  }
+  readFromSwapFile(curProc, (char*)V2P(pageStart), offset+1, PGSIZE);
+  curProc->numOfPhysPages++;
+  return 1;
+}

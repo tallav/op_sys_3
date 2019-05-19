@@ -128,8 +128,8 @@ int             protectPage(void*);
 
 void printFlags();
 void* choosePageToSwapOut();
-int swap(pde_t *pde);
-int swapIn(pde_t *pde);
+int swap(uint *pte, uint faultAdd);
+int swapIn(uint *pte, uint faultAdd);
 int swapOut();
 int checkIfNeedSwapping();
 
