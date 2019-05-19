@@ -24,6 +24,7 @@ char* sbrk(int);
 int sleep(int);
 int uptime(void);
 int yield(void);
+int protectPage(void*);
 
 // ulib.c
 int stat(char*, struct stat*);
@@ -38,7 +39,7 @@ void* memset(void*, int, uint);
 void* malloc(uint);
 void free(void*);
 int atoi(const char*);
+
 void* pmalloc();
 int protect_page(void* ap);
-Int pfree(void* ap);
-
+int pfree(void* ap);

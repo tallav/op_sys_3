@@ -124,6 +124,14 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
+int             protectPage(void*);
+
+void printFlags();
+void* choosePageToSwapOut();
+int swap(pde_t *pde);
+int swapIn(pde_t *pde);
+int swapOut();
+int checkIfNeedSwapping();
 
 // swtch.S
 void            swtch(struct context**, struct context*);

@@ -107,20 +107,70 @@ malloc(uint nbytes)
   }
 }
 
+struct plink {
+  struct plink *next;
+  int isFree;
+} plink;
+
+struct plink *plink_freep; // list of protected pages
+
+int pageSize = 4096;
+
 // like malloc but also always allocate exactly 1 page, it will be page-aligned,
 // if there is any free memory in the previously allocated page it will skip it.
 void* pmalloc(){
-	
+  printf(1, "pmalloc\n");
+  struct plink *pl;
+  if(!plink_freep){ // empty list
+    plink_freep = (struct plink*)sbrk(pageSize);
+    plink_freep->next = 0;
+    plink_freep->isFree = 0;
+    return plink_freep;
+  }
+  pl = plink_freep;
+  while(pl->next){
+    if(pl->isFree){
+      pl->isFree = 0;
+      return pl;
+    }
+    pl = pl->next;
+  }
+  if(pl->isFree){ // reached last link
+    pl->isFree = 0;
+    return pl;
+  }else{
+    pl->next = (struct plink*)sbrk(pageSize);
+    pl->next = 0;
+    pl->isFree = 0;
+    return pl->next;
+  }
 }
 
 // this function will verify that the address of the pointer has been allocated using pmalloc.
 // then it will protect the page, and return 1. return –1 on failure.
 int protect_page(void* ap){
-	return 0;
+  struct plink *pl = plink_freep;
+  while(pl){
+    if(pl == ap){
+      // add system call 
+      return 1;
+    }
+    pl = pl->next;
+  }
+	return -1;
 }
 
 // this function will attempt to release a protected page that pointed at the argument.
 // return –1 on failure, 1 on success.
-Int pfree(void* ap){
-	return 0;
+int pfree(void* ap){
+  printf(1, "pfree\n");
+  struct plink *pl = plink_freep;
+  while(pl){
+    if(pl == ap){
+      pl->isFree = 1;
+      return 1;
+    }
+    pl = pl->next;
+  }
+	return -1;
 }

@@ -32,13 +32,6 @@ struct context {
   uint eip;
 };
 
-struct page_meta_data{
-  const void *va;    // The virtual address of the page
-  uint offsetInFile; // The location of the page in proc swap file
-  int isOccupied;    // Determines if the cell is occupied
-};
-
-
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 // Per-process state
@@ -64,11 +57,17 @@ struct proc {
   int numOfTotalPages;
 };
 
+struct page_meta_data{
+  const void *va;    // The virtual address of the page
+  uint offsetInFile; // The location of the page in proc swap file
+  int isOccupied;    // Determines if the cell is occupied
+};
+
+#define  MAX_TOTAL_PAGES 32
+#define  MAX_PSYC_PAGES  16
+
 // Process memory is laid out contiguously, low addresses first:
 //   text
 //   original data and bss
 //   fixed-size stack
 //   expandable heap
-
-#define  MAX_TOTAL_PAGES 32
-#define  MAX_PSYC_PAGES  16

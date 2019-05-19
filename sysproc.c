@@ -96,3 +96,13 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+int
+sys_protectPage(void){
+  void* va;
+
+  if (argptr(0, (char**)(&va), sizeof(int)) < 0){
+    return -1;
+  }
+  return protectPage(va);
+}
