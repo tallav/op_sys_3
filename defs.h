@@ -9,6 +9,7 @@ struct spinlock;
 struct sleeplock;
 struct stat;
 struct superblock;
+struct page_meta_data;
 
 // bio.c
 void            binit(void);
@@ -56,6 +57,8 @@ int		createSwapFile(struct proc* p);
 int		readFromSwapFile(struct proc * p, char* buffer, uint placeOnFile, uint size);
 int		writeToSwapFile(struct proc* p, char* buffer, uint placeOnFile, uint size);
 int		removeSwapFile(struct proc* p);
+int     copySwapFile(struct proc* np, struct proc* p);
+void    insertNode(struct page_meta_data* pmd);
 
 // ide.c
 void            ideinit(void);
@@ -201,6 +204,7 @@ void            switchuvm(struct proc*);
 void            switchkvm(void);
 int             copyout(pde_t*, uint, void*, uint);
 void            clearpteu(pde_t *pgdir, char *uva);
+int             addPage(uint *pg_entry,char* a);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

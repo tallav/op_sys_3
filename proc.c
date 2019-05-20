@@ -112,6 +112,16 @@ found:
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
 
+  for(int i=0; i< MAX_PSYC_PAGES; i++){
+    p->procSwappedFiles[i].va = 0;
+    p->procSwappedFiles[i].pte = 0;
+    p->procSwappedFiles[i].offsetInFile = i*(PGSIZE);
+    p->procSwappedFiles[i].isOccupied = 0;
+    p->procPhysPages[i].va = 0;
+    p->procPhysPages[i].offsetInFile = 0;
+    p->procPhysPages[i].isOccupied = 0;
+  }
+
   return p;
 }
 
@@ -211,6 +221,11 @@ fork(void)
   safestrcpy(np->name, curproc->name, sizeof(curproc->name));
 
   pid = np->pid;
+
+  createSwapFile(np);
+  if(curproc->swapFile){
+    copySwapFile(np, curproc);
+  }
 
   acquire(&ptable.lock);
 
@@ -558,33 +573,60 @@ void printFlags(pte_t *pgtab){
 	cprintf("PTE_PG = %d\n", (*pgtab & PTE_PG)&0x1);
 }
 
+struct node{
+  struct page_meta_data *pmd;
+  int createTime;
+  struct node *next;
+};
+
+struct node *head;
+struct node *tail;
+
 void* choosePageToSwapOut(){
   // todo: choose which page to swap-out, update (add it to this array) the procSwappedFiles data structure and flush the TLB
-  return 0;
+  struct node* chosen = 0;
+  #ifdef LIFO
+  chosen = head;
+  removeHead();
+  #endif
+  #ifdef SCFIFO
+  struct node *last;
+  for(int i=0; i < myproc()->numOfPhysPages; i++){
+    last = removeTail();
+    uint* pgtab = last->pmd->pte;
+    if(*pgtab & PTE_A){ // page was accessed
+      (*pgtab) &= ~PTE_A; // clear bit and add to the list
+      insertNode(last->pmd);
+    }else{
+      chosen = last;
+      break;
+    }
+  }
+  #endif
+  return chosen->pmd->pte;
 }
 
 // Executes page-out from RAM to Disk.
 // Updates the procSwappedFiles array and adds the meta-date of the page to the file   
 int swapOut(){
- struct proc *curProc = myproc();
- pte_t *pte = choosePageToSwapOut();
- char* pa = (char*)(PTE_ADDR(*pte));
+  struct proc *curProc = myproc();
+  uint* pte = choosePageToSwapOut();
+  char* pa = (char*)(PTE_ADDR(*pte));
   char* va = (char*)(P2V((uint)(pa)));
- int offset = -1;
- for (int i=0; i<MAX_TOTAL_PAGES; i++){ // find cell that isn't occupied in the array
-   if (curProc->procSwappedFiles[i].isOccupied == 0){
-      curProc->procSwappedFiles[i].va = va;
-      curProc->procSwappedFiles[i].offsetInFile = i*(PGSIZE)+1;
+  int offset = -1;
+  for (int i=0; i<MAX_TOTAL_PAGES; i++){ // find cell that isn't occupied in the array
+    if (curProc->procSwappedFiles[i].isOccupied == 0){
+      curProc->procSwappedFiles[i].pte = pte;
       offset = curProc->procSwappedFiles[i].offsetInFile;
       break;
-   }
- }
- if (offset == -1)
+    }
+  }
+  if (offset == -1)
     return -1;
- offset = writeToSwapFile(curProc, (char*)pa, offset, PGSIZE);
- kfree((char*)V2P(va)); // Free the page of physical memory pointed at by the virtualAdd
- curProc->numOfPhysPages--;
- return offset;
+  offset = writeToSwapFile(curProc, (char*)pa, offset, PGSIZE);
+  kfree((char*)V2P(va)); // Free the page of physical memory pointed at by the virtualAdd
+  curProc->numOfPhysPages--;
+  return offset;
 }
 
 // Gets the virtual address of the page which we need to bring from the disk.
@@ -593,4 +635,21 @@ int swap(uint *pte, uint faultAdd){
   lcr3(V2P(myproc()->pgdir)); // Refresh TLB after page-out
   swapIn(pte, faultAdd);
   return 1;
+}
+
+extern uint ticks;
+
+void insertNode(struct page_meta_data* pmd){
+  struct node *pnode = 0;
+  pnode->createTime = ticks;
+  pnode->pmd = pmd;
+  if(!head){ // empty list
+    head = pnode;
+    tail = pnode;
+    pnode->next = 0;
+  }else{ // insert node to the head of the list
+    pnode->next = head;
+    head = pnode;
+  }
+  return;
 }

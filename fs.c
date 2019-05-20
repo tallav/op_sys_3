@@ -809,5 +809,21 @@ readFromSwapFile(struct proc * p, char* buffer, uint placeOnFile, uint size)
   return fileread(p->swapFile, buffer,  size);
 }
 
-
-
+// copies the parent swapFile to the child on fork.
+int copySwapFile(struct proc *np, struct proc *p){
+	void* buffer = kalloc();
+	int numFilePages = p->numOfTotalPages - p->numOfPhysPages;
+	int fileSize = numFilePages*PGSIZE;
+	readFromSwapFile(p, buffer, 0, fileSize);
+	writeToSwapFile(np, buffer, 0, fileSize);
+	kfree(buffer);
+  np->numOfPhysPages = p->numOfPhysPages;
+  np->numOfTotalPages = p->numOfTotalPages;
+  for(int i=0; i< MAX_PSYC_PAGES; i++){
+    np->procSwappedFiles[i].va = p->procSwappedFiles[i].va;
+    np->procSwappedFiles[i].pte = p->procSwappedFiles[i].pte;
+    np->procSwappedFiles[i].offsetInFile = p->procSwappedFiles[i].offsetInFile;
+    np->procSwappedFiles[i].isOccupied = p->procSwappedFiles[i].isOccupied;
+  }
+  return 0;
+}

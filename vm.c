@@ -244,8 +244,33 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
       kfree(mem);
       return 0;
     }
+    pte_t* pg_entry = walkpgdir(pgdir,(const char*)(a),0);
+    #ifndef NONE
+    if(myproc()->numOfPhysPages < 16){
+      addPage(pg_entry, (char*)a);
+    }else{
+      cprintf("process out of memory\n");
+      myproc()->killed=1;
+      return oldsz;
+    }
+    #endif
   }
   return newsz;
+}
+
+int addPage(uint *pg_entry,char* a){
+  struct proc* curProc = myproc();
+  for(int i = 0; i < MAX_PSYC_PAGES; i++){
+    if(!curProc->procSwappedFiles[i].isOccupied){
+      curProc->procPhysPages[i].isOccupied = 1; 
+      curProc->procPhysPages[i].va = a;
+      curProc->procPhysPages[i].pte = pg_entry;
+      insertNode(&curProc->procPhysPages[i]);
+      curProc->numOfPhysPages++;
+      return 1;
+    }
+  }
+  return 0;
 }
 
 // Deallocate user pages to bring the process size from oldsz to
@@ -432,13 +457,19 @@ int swapIn(uint *pte, uint faultAdd){
   char* va = (char*)(P2V((uint)(pa)));
   for (int i=0; i<MAX_TOTAL_PAGES; i++){ // find the cell that contains the meta-data of this page
     if (curProc->procSwappedFiles[i].va == va){
-      curProc->procSwappedFiles[i].va = 0;
+      //curProc->procSwappedFiles[i].va = 0;
+      //curProc->procSwappedFiles[i].pte = 0;
       offset = curProc->procSwappedFiles[i].offsetInFile;
       curProc->procSwappedFiles[i].isOccupied = 0; // cell is not needed anymore
+      curProc->procPhysPages[i].va = va;
+      curProc->procPhysPages[i].pte = pte;
       break;
     }
   }
-  readFromSwapFile(curProc, (char*)V2P(pageStart), offset+1, PGSIZE);
+  readFromSwapFile(curProc, (char*)V2P(pageStart), offset, PGSIZE);
+  #ifndef NONE
+  insertNode(&curProc->procPhysPages[offset/PGSIZE]);
+  #endif
   curProc->numOfPhysPages++;
   return 1;
 }
