@@ -222,10 +222,13 @@ fork(void)
 
   pid = np->pid;
 
-  createSwapFile(np);
+  #ifndef NONE
   if(curproc->swapFile){
-    copySwapFile(np, curproc);
+    createSwapFile(np);
+    cprintf("proc - created swap file to proc_id=%d proc_name=%s\n", np->pid, np->name);
+    copySwapFile(np,curproc);
   }
+  #endif
 
   acquire(&ptable.lock);
 
@@ -261,6 +264,8 @@ exit(void)
   iput(curproc->cwd);
   end_op();
   curproc->cwd = 0;
+  removeSwapFile(curproc);
+  cprintf("proc - removed swap file to proc_id=%d proc_name=%s\n", curproc->pid, curproc->name);
 
   acquire(&ptable.lock);
 
@@ -582,8 +587,9 @@ struct node{
 struct node *head;
 struct node *tail;
 
+// choose which page to swap-out, update (add it to this array) the procSwappedFiles data structure and flush the TLB
 void* choosePageToSwapOut(){
-  // todo: choose which page to swap-out, update (add it to this array) the procSwappedFiles data structure and flush the TLB
+  /*
   struct node* chosen = 0;
   #ifdef LIFO
   chosen = head;
@@ -604,6 +610,8 @@ void* choosePageToSwapOut(){
   }
   #endif
   return chosen->pmd->pte;
+  */
+  return 0;
 }
 
 // Executes page-out from RAM to Disk.
@@ -640,7 +648,8 @@ int swap(uint *pte, uint faultAdd){
 extern uint ticks;
 
 void insertNode(struct page_meta_data* pmd){
-  struct node *pnode = 0;
+  /*
+  struct node *pnode;
   pnode->createTime = ticks;
   pnode->pmd = pmd;
   if(!head){ // empty list
@@ -651,5 +660,6 @@ void insertNode(struct page_meta_data* pmd){
     pnode->next = head;
     head = pnode;
   }
+  */
   return;
 }

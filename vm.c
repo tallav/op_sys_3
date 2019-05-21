@@ -244,6 +244,7 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
       kfree(mem);
       return 0;
     }
+    /*
     pte_t* pg_entry = walkpgdir(pgdir,(const char*)(a),0);
     #ifndef NONE
     if(myproc()->numOfPhysPages < 16){
@@ -254,6 +255,7 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
       return oldsz;
     }
     #endif
+    */
   }
   return newsz;
 }
