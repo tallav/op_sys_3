@@ -43,6 +43,8 @@ struct page_meta_data{
   uint *pte; 
   uint offsetInFile; // The location of the page in proc swap file
   int isOccupied;    // Determines if the cell is occupied
+  int createTime;
+  struct page_meta_data* next;
 };
 
 // Per-process state

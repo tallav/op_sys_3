@@ -59,6 +59,7 @@ int		writeToSwapFile(struct proc* p, char* buffer, uint placeOnFile, uint size);
 int		removeSwapFile(struct proc* p);
 int     copySwapFile(struct proc* np, struct proc* p);
 void    insertNode(struct page_meta_data* pmd);
+struct page_meta_data* removeTail();
 
 // ide.c
 void            ideinit(void);

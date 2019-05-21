@@ -20,6 +20,8 @@ extern void trapret(void);
 
 static void wakeup1(void *chan);
 
+extern uint ticks;
+
 void
 pinit(void)
 {
@@ -91,6 +93,9 @@ found:
 
   release(&ptable.lock);
 
+  p->numOfPhysPages = 0;
+  p->numOfTotalPages = 0;
+
   // Allocate kernel stack.
   if((p->kstack = kalloc()) == 0){
     p->state = UNUSED;
@@ -112,7 +117,11 @@ found:
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
 
+
+
   for(int i=0; i< MAX_PSYC_PAGES; i++){
+    cprintf("proc allocated in array of physpages,cell %d page address: %p \n", i, &p->procSwappedFiles[i]);
+    cprintf("proc allocated in array of swapped files,cell %d page address: %p\n", i, &p->procPhysPages[i]);
     p->procSwappedFiles[i].va = 0;
     p->procSwappedFiles[i].pte = 0;
     p->procSwappedFiles[i].offsetInFile = i*(PGSIZE);
@@ -573,48 +582,65 @@ void printFlags(pte_t *pgtab){
 	cprintf("PTE_PG = %d\n", (*pgtab & PTE_PG)&0x1);
 }
 
-struct node{
+/*struct node{
   struct page_meta_data *pmd;
-  int createTime;
+  //int createTime;
   struct node *next;
-};
+};*/
 
-struct node *head;
-struct node *tail;
+
+
+struct page_meta_data *head;
+struct page_meta_data *tail;
 
 void* choosePageToSwapOut(){
   // todo: choose which page to swap-out, update (add it to this array) the procSwappedFiles data structure and flush the TLB
-  struct node* chosen = 0;
+  cprintf("choose page method");
+  struct page_meta_data* chosen = 0;
   #ifdef LIFO
   chosen = head;
-  removeHead();
+  head = chosen->next;  
   #endif
   #ifdef SCFIFO
-  struct node *last;
+  struct page_meta_data *last;
   for(int i=0; i < myproc()->numOfPhysPages; i++){
-    last = removeTail();
-    uint* pgtab = last->pmd->pte;
+    last = tail; //removeTail();
+    tail = removeTail();
+    uint* pgtab = last->pte;//last->pmd->pte;
     if(*pgtab & PTE_A){ // page was accessed
       (*pgtab) &= ~PTE_A; // clear bit and add to the list
-      insertNode(last->pmd);
+      insertNode(last);//insertNode(last->pmd);
     }else{
       chosen = last;
       break;
     }
   }
   #endif
-  return chosen->pmd->pte;
+  return chosen->pte; //chosen->pmd->pte;
+}
+
+// Delets tha last element (tail) from the list, and the prev node becomes the tail
+struct page_meta_data* removeTail(){
+  struct page_meta_data* tempNode = head;
+  struct page_meta_data* curTail = tail;
+  while (tempNode->next != curTail){
+    tempNode = tempNode->next;
+  }
+  tempNode->next = 0; 
+  tail = tempNode;
+  return tail;
 }
 
 // Executes page-out from RAM to Disk.
 // Updates the procSwappedFiles array and adds the meta-date of the page to the file   
 int swapOut(){
+  cprintf("swap out method");
   struct proc *curProc = myproc();
   uint* pte = choosePageToSwapOut();
   char* pa = (char*)(PTE_ADDR(*pte));
   char* va = (char*)(P2V((uint)(pa)));
   int offset = -1;
-  for (int i=0; i<MAX_TOTAL_PAGES; i++){ // find cell that isn't occupied in the array
+  for (int i=0; i<MAX_PSYC_PAGES; i++){ // find cell that isn't occupied in the array
     if (curProc->procSwappedFiles[i].isOccupied == 0){
       curProc->procSwappedFiles[i].pte = pte;
       offset = curProc->procSwappedFiles[i].offsetInFile;
@@ -637,19 +663,33 @@ int swap(uint *pte, uint faultAdd){
   return 1;
 }
 
-extern uint ticks;
 
+// Insert page to linked list in the first place
 void insertNode(struct page_meta_data* pmd){
-  struct node *pnode = 0;
-  pnode->createTime = ticks;
-  pnode->pmd = pmd;
+ // struct node* pnode;
+  //pnode->pmd = pmd;
+  //pnode->createTime = ticks;
+  cprintf("insert node func\n");
   if(!head){ // empty list
-    head = pnode;
-    tail = pnode;
-    pnode->next = 0;
+    cprintf("list of proc %d is empty\n", myproc()->pid);
+    head = pmd;
+    tail = pmd;
+    pmd->next = 0;
+    cprintf("first node");
   }else{ // insert node to the head of the list
-    pnode->next = head;
-    head = pnode;
+    cprintf("list of proc is NOT empty\n", myproc()->pid);
+    pmd->next = head;
+    head = pmd;
+    /*
+    //---- JUST FOR TESTING:-----
+    struct page_meta_data* tempNodeForTestsing = head;
+    while (tempNodeForTestsing != 0){
+      cprintf("address of node is %p", tempNodeForTestsing);
+      tempNodeForTestsing = tempNodeForTestsing->next;
+    }
+    */
   }
   return;
+  
 }
+

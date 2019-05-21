@@ -246,6 +246,7 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
     }
     pte_t* pg_entry = walkpgdir(pgdir,(const char*)(a),0);
     #ifndef NONE
+    cprintf("num of phys pages in proc %d : %d \n",myproc()->pid, myproc()->numOfPhysPages); 
     if(myproc()->numOfPhysPages < 16){
       addPage(pg_entry, (char*)a);
     }else{
@@ -259,14 +260,19 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
 }
 
 int addPage(uint *pg_entry,char* a){
+  cprintf("add page func: %d \n", myproc()->numOfPhysPages); 
   struct proc* curProc = myproc();
   for(int i = 0; i < MAX_PSYC_PAGES; i++){
-    if(!curProc->procSwappedFiles[i].isOccupied){
+    cprintf(" cur page address %p, cur page address, is occupied = %d \n",&curProc->procSwappedFiles[i],curProc->procPhysPages[i].isOccupied); 
+    if(!curProc->procPhysPages[i].isOccupied){
+      cprintf("found cell in index: %d \n",i); 
       curProc->procPhysPages[i].isOccupied = 1; 
       curProc->procPhysPages[i].va = a;
       curProc->procPhysPages[i].pte = pg_entry;
       insertNode(&curProc->procPhysPages[i]);
       curProc->numOfPhysPages++;
+      cprintf(" cur page address %p, cur page address, is occupied = %d \n",&curProc->procSwappedFiles[i],curProc->procPhysPages[i].isOccupied); 
+
       return 1;
     }
   }
@@ -446,6 +452,7 @@ int checkIfNeedSwapping(){
 
 // Executes page-in from Disk to RAM.
 int swapIn(uint *pte, uint faultAdd){
+  cprintf("swap in method");
   struct proc* curProc = myproc();
   char* mem = kalloc(); // allocate physical memory (size of page)
   char* pageStart = (char*)PGROUNDDOWN(faultAdd); // gets the start point of the page (removes offset)
@@ -453,18 +460,24 @@ int swapIn(uint *pte, uint faultAdd){
   if(!maped)
     return -1;
   int offset = -1;
+  int foundCell = 0;
   char* pa = (char*)(PTE_ADDR(*pte));
   char* va = (char*)(P2V((uint)(pa)));
-  for (int i=0; i<MAX_TOTAL_PAGES; i++){ // find the cell that contains the meta-data of this page
+  for (int i=0; i<MAX_PSYC_PAGES; i++){ // find the cell that contains the meta-data of this page
     if (curProc->procSwappedFiles[i].va == va){
-      //curProc->procSwappedFiles[i].va = 0;
-      //curProc->procSwappedFiles[i].pte = 0;
       offset = curProc->procSwappedFiles[i].offsetInFile;
-      curProc->procSwappedFiles[i].isOccupied = 0; // cell is not needed anymore
-      curProc->procPhysPages[i].va = va;
-      curProc->procPhysPages[i].pte = pte;
-      break;
-    }
+      curProc->procSwappedFiles[i].isOccupied = 0; // cell in procSwappedFiles Array is not needed anymore
+      // curProc->procPhysPages[i].va = va;
+      // curProc->procPhysPages[i].pte = pte;
+      // break;
+      }
+    if (!foundCell){
+      if (curProc->procPhysPages[i].isOccupied == 0){ // look for a place in procPhysPages Array
+          curProc->procPhysPages[i].va = va;
+          curProc->procPhysPages[i].pte = pte;
+          foundCell = 1;
+        }
+    }  
   }
   readFromSwapFile(curProc, (char*)V2P(pageStart), offset, PGSIZE);
   #ifndef NONE
