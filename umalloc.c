@@ -115,14 +115,20 @@ struct plink {
 struct plink *plink_freep; // list of protected pages
 
 int pageSize = 4096;
+int towpageSize = 8192;
 
 // like malloc but also always allocate exactly 1 page, it will be page-aligned,
 // if there is any free memory in the previously allocated page it will skip it.
 void* pmalloc(){
-  printf(1, "pmalloc\n");
   struct plink *pl;
   if(!plink_freep){ // empty list
     plink_freep = (struct plink*)sbrk(pageSize);
+    void* tempMem = plink_freep;
+    while((int)tempMem%4096 != 0 && (tempMem != (plink_freep + pageSize))){ // adress is not aligned
+      tempMem++;
+    }
+    printf(1, "tempMem=%d\n", tempMem);
+    //printf(1, "plink=%d\n", plink_freep);
     plink_freep->next = 0;
     plink_freep->isFree = 0;
     return plink_freep;
@@ -140,8 +146,9 @@ void* pmalloc(){
     return pl;
   }else{
     pl->next = (struct plink*)sbrk(pageSize);
-    pl->next = 0;
-    pl->isFree = 0;
+    //printf(1, "plink=%d\n", pl->next);
+    pl->next->next = 0;
+    pl->next->isFree = 0;
     return pl->next;
   }
 }
@@ -163,7 +170,6 @@ int protect_page(void* ap){
 // this function will attempt to release a protected page that pointed at the argument.
 // return –1 on failure, 1 on success.
 int pfree(void* ap){
-  printf(1, "pfree\n");
   struct plink *pl = plink_freep;
   while(pl){
     if(pl == ap){

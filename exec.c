@@ -40,6 +40,22 @@ exec(char *path, char **argv)
 
   // Load program into memory.
   sz = 0;
+  
+  //init_page_meta(curproc);
+  if(curproc->swapFile){
+    removeSwapFile(curproc);
+    cprintf("exec - removed swap file to proc_id=%d proc_name=%s\n", curproc->pid, curproc->name);
+  }
+  char ignorePaging = 1;
+  if(strncmp(path,"sh",3) != 0){ ignorePaging = 0; }
+#ifdef NONE
+  ignorePaging = 1;
+#endif
+  if(!ignorePaging){
+    createSwapFile(curproc);
+    cprintf("exec - created swap file to proc_id=%d proc_name=%s\n", curproc->pid, curproc->name);
+  }
+
   for(i=0, off=elf.phoff; i<elf.phnum; i++, off+=sizeof(ph)){
     if(readi(ip, (char*)&ph, off, sizeof(ph)) != sizeof(ph))
       goto bad;

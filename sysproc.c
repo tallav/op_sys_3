@@ -60,6 +60,7 @@ sys_sbrk(void)
   addr = myproc()->sz;
   if(growproc(n) < 0)
     return -1;
+  cprintf("sbrk - addr=%d\n", addr);
   return addr;
 }
 

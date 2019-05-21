@@ -244,6 +244,7 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
       kfree(mem);
       return 0;
     }
+    /*
     pte_t* pg_entry = walkpgdir(pgdir,(const char*)(a),0);
     #ifndef NONE
     cprintf("num of phys pages in proc %d : %d \n",myproc()->pid, myproc()->numOfPhysPages); 
@@ -255,6 +256,7 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
       return oldsz;
     }
     #endif
+    */
   }
   return newsz;
 }

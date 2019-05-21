@@ -231,10 +231,13 @@ fork(void)
 
   pid = np->pid;
 
-  createSwapFile(np);
+  #ifndef NONE
   if(curproc->swapFile){
-    copySwapFile(np, curproc);
+    createSwapFile(np);
+    cprintf("proc - created swap file to proc_id=%d proc_name=%s\n", np->pid, np->name);
+    copySwapFile(np,curproc);
   }
+  #endif
 
   acquire(&ptable.lock);
 
@@ -270,6 +273,8 @@ exit(void)
   iput(curproc->cwd);
   end_op();
   curproc->cwd = 0;
+  removeSwapFile(curproc);
+  cprintf("proc - removed swap file to proc_id=%d proc_name=%s\n", curproc->pid, curproc->name);
 
   acquire(&ptable.lock);
 
@@ -593,6 +598,7 @@ void printFlags(pte_t *pgtab){
 struct page_meta_data *head;
 struct page_meta_data *tail;
 
+// choose which page to swap-out, update (add it to this array) the procSwappedFiles data structure and flush the TLB
 void* choosePageToSwapOut(){
   // todo: choose which page to swap-out, update (add it to this array) the procSwappedFiles data structure and flush the TLB
   cprintf("choose page method");
@@ -689,7 +695,5 @@ void insertNode(struct page_meta_data* pmd){
     }
     */
   }
-  return;
-  
 }
 
