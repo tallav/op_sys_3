@@ -44,7 +44,7 @@ exec(char *path, char **argv)
   //init_page_meta(curproc);
   if(curproc->swapFile){
     removeSwapFile(curproc);
-    cprintf("exec - removed swap file to proc_id=%d proc_name=%s\n", curproc->pid, curproc->name);
+   // cprintf("exec - removed swap file to proc_id=%d proc_name=%s\n", curproc->pid, curproc->name);
   }
   char ignorePaging = 1;
   //if(strncmp(path,"sh",3)!=0){ignorePaging = 0;}
@@ -61,7 +61,7 @@ exec(char *path, char **argv)
 #endif
   if(!ignorePaging){
     createSwapFile(curproc);
-    cprintf("exec - created swap file to proc_id=%d proc_name=%s\n", curproc->pid, curproc->name);
+    //cprintf("exec - created swap file to proc_id=%d proc_name=%s\n", curproc->pid, curproc->name);
   }
 
   for(i=0, off=elf.phoff; i<elf.phnum; i++, off+=sizeof(ph)){

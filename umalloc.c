@@ -127,7 +127,7 @@ void* pmalloc(){
     while((int)tempMem%4096 != 0 && (tempMem != (plink_freep + pageSize))){ // adress is not aligned
       tempMem++;
     }
-    printf(1, "tempMem=%d\n", tempMem);
+    //printf(1, "tempMem=%d\n", tempMem);
     //printf(1, "plink=%d\n", plink_freep);
     plink_freep->next = 0;
     plink_freep->isFree = 0;

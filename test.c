@@ -28,10 +28,25 @@ void test_pmalloc(){
     exit();
 }
 
+void test_swapping(){
+    int n = 18;
+    int i = 0;
+    int pid = fork();
+    if(pid != 0){
+        while(i<n){
+             pmalloc(4096);
+             i++;
+        }
+    }
+    wait();
+    exit();
+}
+
 int
 main(int argc, char *argv[])
 {
-    test_pmalloc();
+   // test_pmalloc();
+    test_swapping();
     /*
     int pid = fork();
     if(pid == 0){

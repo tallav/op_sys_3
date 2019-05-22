@@ -244,19 +244,19 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
       kfree(mem);
       return 0;
     }
-    /*
+    
     pte_t* pg_entry = walkpgdir(pgdir,(const char*)(a),0);
     #ifndef NONE
-    //cprintf("num of phys pages in proc %d : %d \n",myproc()->pid, myproc()->numOfPhysPages); 
-    if(myproc()->numOfPhysPages < 16){
-      addPage(pg_entry, (char*)a);
-    }else{
-      //cprintf("process out of memory\n");
+    if (myproc()->numOfPhysPages + myproc()->numOfDiskPages  < 32){
+        if(myproc()->numOfPhysPages < 16)
+          addPage(pg_entry, (char*)a);
+    }else{ // Num of total pages excceded MAX_TOTAL_PAGES
+      //cprintf("process out of memory, num of phys pages: %d num of disk pages: %d num of total pages: %d \n",myproc()->numOfPhysPages,myproc()->numOfDiskPages,myproc()->numOfTotalPages);
       myproc()->killed=1;
       return oldsz;
     }
     #endif
-    */
+    
   }
   return newsz;
 }
@@ -265,7 +265,7 @@ int addPage(uint *pg_entry,char* a){
   //cprintf("add page func: %d \n", myproc()->numOfPhysPages); 
   struct proc* curProc = myproc();
   for(int i = 0; i < MAX_PSYC_PAGES; i++){
-    //cprintf(" cur page address %p, cur page address, is occupied = %d \n",&curProc->procSwappedFiles[i],curProc->procPhysPages[i].isOccupied); 
+  //cprintf(" cur page address %p, cur page address, is occupied = %d \n",&curProc->procSwappedFiles[i],curProc->procPhysPages[i].isOccupied); 
     if(!curProc->procPhysPages[i].isOccupied){
       //cprintf("found cell in index: %d \n",i); 
       curProc->procPhysPages[i].isOccupied = 1; 
@@ -274,7 +274,6 @@ int addPage(uint *pg_entry,char* a){
       insertNode(&curProc->procPhysPages[i]);
       curProc->numOfPhysPages++;
       //cprintf(" cur page address %p, cur page address, is occupied = %d \n",&curProc->procSwappedFiles[i],curProc->procPhysPages[i].isOccupied); 
-
       return 1;
     }
   }
@@ -426,6 +425,7 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
 // This function checks if T_PGFLT received beacuse the MMU fails to access the required page
 // or other reason.
 int checkIfNeedSwapping(){
+  //cprintf("check if need swapping method");
   struct proc *curProc = myproc();
   uint faultingAddress = rcr2(); // contains the address that register %cr2 holds
   pde_t *pde;
@@ -482,9 +482,10 @@ int swapIn(uint *pte, uint faultAdd){
     }  
   }
   readFromSwapFile(curProc, (char*)V2P(pageStart), offset, PGSIZE);
+  curProc->numOfPhysPages++;
+  curProc->numOfDiskPages--;
   #ifndef NONE
   insertNode(&curProc->procPhysPages[offset/PGSIZE]);
   #endif
-  curProc->numOfPhysPages++;
   return 1;
 }

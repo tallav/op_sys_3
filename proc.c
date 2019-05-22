@@ -234,7 +234,7 @@ fork(void)
   #ifndef NONE
   if(curproc->swapFile){
     createSwapFile(np);
-    cprintf("proc - created swap file to proc_id=%d proc_name=%s\n", np->pid, np->name);
+    //cprintf("proc - created swap file to proc_id=%d proc_name=%s\n", np->pid, np->name);
     copySwapFile(np,curproc);
   }
   #endif
@@ -274,7 +274,7 @@ exit(void)
   end_op();
   curproc->cwd = 0;
   removeSwapFile(curproc);
-  cprintf("proc - removed swap file to proc_id=%d proc_name=%s\n", curproc->pid, curproc->name);
+  //cprintf("proc - removed swap file to proc_id=%d proc_name=%s\n", curproc->pid, curproc->name);
 
   acquire(&ptable.lock);
 
@@ -537,7 +537,7 @@ int protectPage(void* va){
   }
   printFlags(pgtab);
   if(*pgtab & PTE_W){ // this page is writable
-    cprintf("PTE_W = 1 - entered if\n");
+    //cprintf("PTE_W = 1 - entered if\n");
     (*pgtab) &= ~PTE_W;
   }
   printFlags(pgtab);
@@ -658,6 +658,7 @@ int swapOut(){
   offset = writeToSwapFile(curProc, (char*)pa, offset, PGSIZE);
   kfree((char*)V2P(va)); // Free the page of physical memory pointed at by the virtualAdd
   curProc->numOfPhysPages--;
+  curProc->numOfDiskPages++;
   return offset;
 }
 
@@ -672,9 +673,6 @@ int swap(uint *pte, uint faultAdd){
 
 // Insert page to linked list in the first place
 void insertNode(struct page_meta_data* pmd){
- // struct node* pnode;
-  //pnode->pmd = pmd;
-  //pnode->createTime = ticks;
   //cprintf("insert node func\n");
   if(!head){ // empty list
     //cprintf("list of proc %d is empty\n", myproc()->pid);
@@ -686,14 +684,14 @@ void insertNode(struct page_meta_data* pmd){
     //cprintf("list of proc is NOT empty\n", myproc()->pid);
     pmd->next = head;
     head = pmd;
-    /*
+    
     //---- JUST FOR TESTING:-----
-    struct page_meta_data* tempNodeForTestsing = head;
-    while (tempNodeForTestsing != 0){
-      cprintf("address of node is %p", tempNodeForTestsing);
-      tempNodeForTestsing = tempNodeForTestsing->next;
-    }
-    */
+    // struct page_meta_data* tempNodeForTestsing = head;
+    // while (tempNodeForTestsing != 0){
+    //   cprintf("address of node is %p", tempNodeForTestsing);
+    //   tempNodeForTestsing = tempNodeForTestsing->next;
+    // }
+    
   }
 }
 
