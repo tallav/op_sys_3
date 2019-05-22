@@ -34,6 +34,7 @@ void allocation_size();
 // ------------------------------------------------------------ TEST CONTROLS --------------------------------------------------------------------------
 
 #define NUM_MEMORY_ALLOCATIONS 255
+char *memory_allocations[NUM_MEMORY_ALLOCATIONS];
 
 void (*memory_allocations_functions_scheme[])(char i, char **memory_location, int *memory_size) = 
     {pmalloc_helper,
@@ -63,6 +64,10 @@ int main(int argc, char *argv[]){
     printf(1,"Test starting...\n");
     
     allocate_all_memory();
+    for(int i = 0; i < NUM_MEMORY_ALLOCATIONS; i++){
+        printf(1, "memory[%d] = %d, ", i, memory_allocations[i]);
+    }
+    printf(1, "\n");
     validate_all_memory();
     allocation_size();
     free_all_memory_with_pfree();
@@ -73,7 +78,7 @@ int main(int argc, char *argv[]){
 
 // ------------------------------------------------------------ TEST CONTROLS --------------------------------------------------------------------------
 
-char *memory_allocations[NUM_MEMORY_ALLOCATIONS];
+//char *memory_allocations[NUM_MEMORY_ALLOCATIONS];
 int memory_allocations_sizes[NUM_MEMORY_ALLOCATIONS];
 
 int memory_allocations_functions_index = 0;

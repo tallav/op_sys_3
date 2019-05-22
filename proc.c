@@ -587,14 +587,6 @@ void printFlags(pte_t *pgtab){
 	cprintf("PTE_PG = %d\n", (*pgtab & PTE_PG)&0x1);
 }
 
-/*struct node{
-  struct page_meta_data *pmd;
-  //int createTime;
-  struct node *next;
-};*/
-
-
-
 struct page_meta_data *head;
 struct page_meta_data *tail;
 

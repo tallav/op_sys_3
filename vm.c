@@ -245,10 +245,10 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
       return 0;
     }
     
-    pte_t* pg_entry = walkpgdir(pgdir,(const char*)(a),0);
     #ifndef NONE
-    if (myproc()->numOfPhysPages + myproc()->numOfDiskPages  < 32){
-        if(myproc()->numOfPhysPages < 16)
+    pte_t* pg_entry = walkpgdir(pgdir,(const char*)(a),0);
+    if (myproc()->numOfPhysPages + myproc()->numOfDiskPages  < MAX_TOTAL_PAGES){
+        if(myproc()->numOfPhysPages < MAX_PSYC_PAGES)
           addPage(pg_entry, (char*)a);
     }else{ // Num of total pages excceded MAX_TOTAL_PAGES
       //cprintf("process out of memory, num of phys pages: %d num of disk pages: %d num of total pages: %d \n",myproc()->numOfPhysPages,myproc()->numOfDiskPages,myproc()->numOfTotalPages);
@@ -256,7 +256,7 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
       return oldsz;
     }
     #endif
-    
+
   }
   return newsz;
 }
