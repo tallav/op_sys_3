@@ -539,6 +539,7 @@ int protectPage(void* va){
   if(*pgtab & PTE_W){ // this page is writable
     //cprintf("PTE_W = 1 - entered if\n");
     (*pgtab) &= ~PTE_W;
+    myproc()->numOfProtectedPages++;
   }
   printFlags(pgtab);
   return 1;
@@ -571,12 +572,15 @@ procdump(void)
       state = states[p->state];
     else
       state = "???";
-    cprintf("%d %s %s", p->pid, state, p->name);
+    int allocatedMemoryPages= p->numOfPhysPages + p->numOfDiskPages;
+    cprintf("%d %s %d %d %d %d %d %s", p->pid, state, allocatedMemoryPages, p->numOfDiskPages,p->numOfProtectedPages,p->numOfPageFaults, p->totalNumOfPagedOut ,p->name);
     if(p->state == SLEEPING){
       getcallerpcs((uint*)p->context->ebp+2, pc);
       for(i=0; i<10 && pc[i] != 0; i++)
         cprintf(" %p", pc[i]);
     }
+    int curFreePages = MAX_TOTAL_PAGES - allocatedMemoryPages;
+    cprintf("%d\n", curFreePages/MAX_TOTAL_PAGES);
     cprintf("\n");
   }
 }
@@ -606,6 +610,7 @@ void* choosePageToSwapOut(){
   #ifdef LIFO
   chosen = head;
   head = chosen->next;  
+  cprintf("head %p chosen %p \n", chosen, head );
   #endif
   #ifdef SCFIFO
   struct page_meta_data *last;
@@ -643,6 +648,7 @@ int swapOut(){
   //cprintf("swap out method");
   struct proc *curProc = myproc();
   uint* pte = choosePageToSwapOut();
+  cprintf("pte of chosen page %d \n", pte);
   char* pa = (char*)(PTE_ADDR(*pte));
   char* va = (char*)(P2V((uint)(pa)));
   int offset = -1;
@@ -659,6 +665,7 @@ int swapOut(){
   kfree((char*)V2P(va)); // Free the page of physical memory pointed at by the virtualAdd
   curProc->numOfPhysPages--;
   curProc->numOfDiskPages++;
+  curProc->totalNumOfPagedOut++;
   return offset;
 }
 

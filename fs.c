@@ -812,14 +812,17 @@ readFromSwapFile(struct proc * p, char* buffer, uint placeOnFile, uint size)
 // copies the parent swapFile to the child on fork.
 int copySwapFile(struct proc *np, struct proc *p){
 	void* buffer = kalloc();
-	int numFilePages = p->numOfTotalPages - p->numOfPhysPages;
+	int numFilePages = p->numOfDiskPages + p->numOfPhysPages;
 	int fileSize = numFilePages*PGSIZE;
 	readFromSwapFile(p, buffer, 0, fileSize);
 	writeToSwapFile(np, buffer, 0, fileSize);
 	kfree(buffer);
   np->numOfPhysPages = p->numOfPhysPages;
+  np->numOfDiskPages = p->numOfDiskPages;
+  np->numOfProtectedPages = p->numOfProtectedPages;
+  np->totalNumOfPagedOut = 0;
+  np->numOfPageFaults = 0;
   //cprintf("num of phys pages in fork %d \n", np->numOfPhysPages);
-  np->numOfTotalPages = p->numOfTotalPages;
   for(int i=0; i< MAX_PSYC_PAGES; i++){
     np->procSwappedFiles[i].va = p->procSwappedFiles[i].va;
     np->procSwappedFiles[i].pte = p->procSwappedFiles[i].pte;

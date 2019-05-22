@@ -169,8 +169,7 @@ mkfs: mkfs.c fs.h
 .PRECIOUS: %.o
 
 UPROGS=\
-	_quitXV6\
-	_task2_1\
+	_task2_4\
 	_sh\
 	_init\
 	_ls\
@@ -279,17 +278,11 @@ tar:
 	(cd /tmp; tar cf - xv6) | gzip >xv6-rev10.tar.gz  # the next one will be 10 (9/17)
 
 .PHONY: dist-test dist
-_quitXV6: $(ULIB)
-	gcc -Werror -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -ggdb -m32 -fno-omit-frame-pointer -fno-stack-protector -fno-pie -no-pie -c -o quitXV6.o ./Project_Test/XV6_Tests/quitXV6.c
-	ld -m elf_i386 -N -e main -Ttext 0 -o _quitXV6 quitXV6.o $(ULIB)
-	objdump -S _quitXV6 > quitXV6.asm
-	$(OBJDUMP) -t _quitXV6 | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > quitXV6.sym
-
-_task2_1: $(ULIB)
-	gcc -Werror -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -ggdb -m32 -fno-omit-frame-pointer -fno-stack-protector -fno-pie -no-pie -c -o task2_1.o ./Project_Test/XV6_Tests/task2_1.c
-	ld -m elf_i386 -N -e main -Ttext 0 -o _task2_1 task2_1.o $(ULIB)
-	objdump -S _task2_1 > task2_1.asm
-	$(OBJDUMP) -t _task2_1 | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > task2_1.sym
+_task2_4: $(ULIB)
+	gcc -Werror -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -ggdb -m32 -fno-omit-frame-pointer -fno-stack-protector -fno-pie -no-pie -c -o task2_4.o ./Project_Test/XV6_Tests/task2_4.c
+	ld -m elf_i386 -N -e main -Ttext 0 -o _task2_4 task2_4.o $(ULIB)
+	objdump -S _task2_4 > task2_4.asm
+	$(OBJDUMP) -t _task2_4 | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > task2_4.sym
 
 _sh: $(ULIB)
 	gcc -Werror -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -ggdb -m32 -fno-omit-frame-pointer -fno-stack-protector -fno-pie -no-pie -c -o sh.o sh.c
