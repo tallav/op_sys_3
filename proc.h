@@ -69,6 +69,10 @@ struct proc {
   struct page_meta_data procPhysPages[MAX_PSYC_PAGES]; // Contains the deatils of pages in the RAM
   int numOfPhysPages;
   int numOfDiskPages;
+  int numOfProtectedPages;
+  int numOfPageFaults;
+  int totalNumOfPagedOut; 
+
   int numOfTotalPages;
 };
 

@@ -273,7 +273,7 @@ int addPage(uint *pg_entry,char* a){
       curProc->procPhysPages[i].pte = pg_entry;
       insertNode(&curProc->procPhysPages[i]);
       curProc->numOfPhysPages++;
-      //cprintf(" cur page address %p, cur page address, is occupied = %d \n",&curProc->procSwappedFiles[i],curProc->procPhysPages[i].isOccupied); 
+     // cprintf(" cur page address %p, cur page address, is occupied = %d \n",&curProc->procSwappedFiles[i],curProc->procPhysPages[i].isOccupied); 
       return 1;
     }
   }
@@ -427,6 +427,7 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
 int checkIfNeedSwapping(){
   //cprintf("check if need swapping method");
   struct proc *curProc = myproc();
+  curProc->numOfPageFaults++;
   uint faultingAddress = rcr2(); // contains the address that register %cr2 holds
   pde_t *pde;
   pte_t *pgtab;
