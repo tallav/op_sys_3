@@ -233,13 +233,13 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
   for(; a < newsz; a += PGSIZE){
     mem = kalloc();
     if(mem == 0){
-      cprintf("allocuvm out of memory\n");
+      //cprintf("allocuvm out of memory\n");
       deallocuvm(pgdir, newsz, oldsz);
       return 0;
     }
     memset(mem, 0, PGSIZE);
     if(mappages(pgdir, (char*)a, PGSIZE, V2P(mem), PTE_W|PTE_U) < 0){
-      cprintf("allocuvm out of memory (2)\n");
+      //cprintf("allocuvm out of memory (2)\n");
       deallocuvm(pgdir, newsz, oldsz);
       kfree(mem);
       return 0;
@@ -247,11 +247,11 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
     /*
     pte_t* pg_entry = walkpgdir(pgdir,(const char*)(a),0);
     #ifndef NONE
-    cprintf("num of phys pages in proc %d : %d \n",myproc()->pid, myproc()->numOfPhysPages); 
+    //cprintf("num of phys pages in proc %d : %d \n",myproc()->pid, myproc()->numOfPhysPages); 
     if(myproc()->numOfPhysPages < 16){
       addPage(pg_entry, (char*)a);
     }else{
-      cprintf("process out of memory\n");
+      //cprintf("process out of memory\n");
       myproc()->killed=1;
       return oldsz;
     }
@@ -262,18 +262,18 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
 }
 
 int addPage(uint *pg_entry,char* a){
-  cprintf("add page func: %d \n", myproc()->numOfPhysPages); 
+  //cprintf("add page func: %d \n", myproc()->numOfPhysPages); 
   struct proc* curProc = myproc();
   for(int i = 0; i < MAX_PSYC_PAGES; i++){
-    cprintf(" cur page address %p, cur page address, is occupied = %d \n",&curProc->procSwappedFiles[i],curProc->procPhysPages[i].isOccupied); 
+    //cprintf(" cur page address %p, cur page address, is occupied = %d \n",&curProc->procSwappedFiles[i],curProc->procPhysPages[i].isOccupied); 
     if(!curProc->procPhysPages[i].isOccupied){
-      cprintf("found cell in index: %d \n",i); 
+      //cprintf("found cell in index: %d \n",i); 
       curProc->procPhysPages[i].isOccupied = 1; 
       curProc->procPhysPages[i].va = a;
       curProc->procPhysPages[i].pte = pg_entry;
       insertNode(&curProc->procPhysPages[i]);
       curProc->numOfPhysPages++;
-      cprintf(" cur page address %p, cur page address, is occupied = %d \n",&curProc->procSwappedFiles[i],curProc->procPhysPages[i].isOccupied); 
+      //cprintf(" cur page address %p, cur page address, is occupied = %d \n",&curProc->procSwappedFiles[i],curProc->procPhysPages[i].isOccupied); 
 
       return 1;
     }
@@ -445,7 +445,7 @@ int checkIfNeedSwapping(){
     }
   }
   else{
-    cprintf("segmentation fault\n");
+    //cprintf("segmentation fault\n");
     curProc->killed = 1;
     return -1;
   }
@@ -454,7 +454,7 @@ int checkIfNeedSwapping(){
 
 // Executes page-in from Disk to RAM.
 int swapIn(uint *pte, uint faultAdd){
-  cprintf("swap in method");
+  //cprintf("swap in method");
   struct proc* curProc = myproc();
   char* mem = kalloc(); // allocate physical memory (size of page)
   char* pageStart = (char*)PGROUNDDOWN(faultAdd); // gets the start point of the page (removes offset)

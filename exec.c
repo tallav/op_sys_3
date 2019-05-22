@@ -47,7 +47,15 @@ exec(char *path, char **argv)
     cprintf("exec - removed swap file to proc_id=%d proc_name=%s\n", curproc->pid, curproc->name);
   }
   char ignorePaging = 1;
-  if(strncmp(path,"sh",3) != 0){ ignorePaging = 0; }
+  //if(strncmp(path,"sh",3)!=0){ignorePaging = 0;}
+  if(strncmp(curproc->name,"init",4) != 0 || strncmp(curproc->name,"sh",2) != 0){ 
+    /*caused panic fileclose
+    if(curproc->swapFile){
+      removeSwapFile(curproc);
+      cprintf("exec - removed swap file to proc_id=%d proc_name=%s\n", curproc->pid, curproc->name);
+    }*/
+    ignorePaging = 0; 
+  }
 #ifdef NONE
   ignorePaging = 1;
 #endif
