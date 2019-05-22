@@ -818,7 +818,7 @@ int copySwapFile(struct proc *np, struct proc *p){
 	writeToSwapFile(np, buffer, 0, fileSize);
 	kfree(buffer);
   np->numOfPhysPages = p->numOfPhysPages;
-  cprintf("num of phys pages in fork %d \n", np->numOfPhysPages);
+  //cprintf("num of phys pages in fork %d \n", np->numOfPhysPages);
   np->numOfTotalPages = p->numOfTotalPages;
   for(int i=0; i< MAX_PSYC_PAGES; i++){
     np->procSwappedFiles[i].va = p->procSwappedFiles[i].va;

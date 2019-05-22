@@ -120,8 +120,8 @@ found:
 
 
   for(int i=0; i< MAX_PSYC_PAGES; i++){
-    cprintf("proc allocated in array of physpages,cell %d page address: %p \n", i, &p->procSwappedFiles[i]);
-    cprintf("proc allocated in array of swapped files,cell %d page address: %p\n", i, &p->procPhysPages[i]);
+  //  cprintf("proc allocated in array of physpages,cell %d page address: %p \n", i, &p->procSwappedFiles[i]);
+   // cprintf("proc allocated in array of swapped files,cell %d page address: %p\n", i, &p->procPhysPages[i]);
     p->procSwappedFiles[i].va = 0;
     p->procSwappedFiles[i].pte = 0;
     p->procSwappedFiles[i].offsetInFile = i*(PGSIZE);
@@ -234,7 +234,7 @@ fork(void)
   #ifndef NONE
   if(curproc->swapFile){
     createSwapFile(np);
-    cprintf("proc - created swap file to proc_id=%d proc_name=%s\n", np->pid, np->name);
+   // cprintf("proc - created swap file to proc_id=%d proc_name=%s\n", np->pid, np->name);
     copySwapFile(np,curproc);
   }
   #endif
@@ -274,7 +274,7 @@ exit(void)
   end_op();
   curproc->cwd = 0;
   removeSwapFile(curproc);
-  cprintf("proc - removed swap file to proc_id=%d proc_name=%s\n", curproc->pid, curproc->name);
+ // cprintf("proc - removed swap file to proc_id=%d proc_name=%s\n", curproc->pid, curproc->name);
 
   acquire(&ptable.lock);
 
@@ -537,7 +537,7 @@ int protectPage(void* va){
   }
   printFlags(pgtab);
   if(*pgtab & PTE_W){ // this page is writable
-    cprintf("PTE_W = 1 - entered if\n");
+    //cprintf("PTE_W = 1 - entered if\n");
     (*pgtab) &= ~PTE_W;
   }
   printFlags(pgtab);
@@ -601,7 +601,7 @@ struct page_meta_data *tail;
 // choose which page to swap-out, update (add it to this array) the procSwappedFiles data structure and flush the TLB
 void* choosePageToSwapOut(){
   // todo: choose which page to swap-out, update (add it to this array) the procSwappedFiles data structure and flush the TLB
-  cprintf("choose page method");
+ // cprintf("choose page method");
   struct page_meta_data* chosen = 0;
   #ifdef LIFO
   chosen = head;
@@ -640,7 +640,7 @@ struct page_meta_data* removeTail(){
 // Executes page-out from RAM to Disk.
 // Updates the procSwappedFiles array and adds the meta-date of the page to the file   
 int swapOut(){
-  cprintf("swap out method");
+  //cprintf("swap out method");
   struct proc *curProc = myproc();
   uint* pte = choosePageToSwapOut();
   char* pa = (char*)(PTE_ADDR(*pte));
@@ -658,6 +658,7 @@ int swapOut(){
   offset = writeToSwapFile(curProc, (char*)pa, offset, PGSIZE);
   kfree((char*)V2P(va)); // Free the page of physical memory pointed at by the virtualAdd
   curProc->numOfPhysPages--;
+  curProc->numOfDiskPages++;
   return offset;
 }
 
@@ -672,28 +673,25 @@ int swap(uint *pte, uint faultAdd){
 
 // Insert page to linked list in the first place
 void insertNode(struct page_meta_data* pmd){
- // struct node* pnode;
-  //pnode->pmd = pmd;
-  //pnode->createTime = ticks;
-  cprintf("insert node func\n");
+  //cprintf("insert node func\n");
   if(!head){ // empty list
-    cprintf("list of proc %d is empty\n", myproc()->pid);
+   // cprintf("list of proc %d is empty\n", myproc()->pid);
     head = pmd;
     tail = pmd;
     pmd->next = 0;
-    cprintf("first node");
+   // cprintf("first node");
   }else{ // insert node to the head of the list
-    cprintf("list of proc is NOT empty\n", myproc()->pid);
+   // cprintf("list of proc is NOT empty\n", myproc()->pid);
     pmd->next = head;
     head = pmd;
-    /*
+    
     //---- JUST FOR TESTING:-----
-    struct page_meta_data* tempNodeForTestsing = head;
-    while (tempNodeForTestsing != 0){
-      cprintf("address of node is %p", tempNodeForTestsing);
-      tempNodeForTestsing = tempNodeForTestsing->next;
-    }
-    */
+    // struct page_meta_data* tempNodeForTestsing = head;
+    // while (tempNodeForTestsing != 0){
+    //   cprintf("address of node is %p", tempNodeForTestsing);
+    //   tempNodeForTestsing = tempNodeForTestsing->next;
+    // }
+    
   }
 }
 
