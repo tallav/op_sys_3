@@ -58,8 +58,6 @@ int		readFromSwapFile(struct proc * p, char* buffer, uint placeOnFile, uint size
 int		writeToSwapFile(struct proc* p, char* buffer, uint placeOnFile, uint size);
 int		removeSwapFile(struct proc* p);
 int     copySwapFile(struct proc* np, struct proc* p);
-void    insertNode(struct page_meta_data* pmd);
-struct page_meta_data* removeTail();
 
 // ide.c
 void            ideinit(void);
@@ -136,6 +134,10 @@ int swap(uint *pte, uint faultAdd);
 int swapIn(uint *pte, uint faultAdd);
 int swapOut();
 int checkIfNeedSwapping();
+void insertNode(struct page_meta_data* pmd);
+int removeNode(struct page_meta_data* pmd);
+struct page_meta_data* removeTail();
+int initPageMetaData(struct proc* p);   
 
 // swtch.S
 void            swtch(struct context**, struct context*);
@@ -206,6 +208,8 @@ void            switchkvm(void);
 int             copyout(pde_t*, uint, void*, uint);
 void            clearpteu(pde_t *pgdir, char *uva);
 int             addPage(uint *pg_entry,char* a);
+int             removePage(uint *page);
+int             pageExist(struct proc* p,uint* page);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

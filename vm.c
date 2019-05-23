@@ -223,47 +223,67 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
 {
   char *mem;
   uint a;
-
   if(newsz >= KERNBASE)
     return 0;
   if(newsz < oldsz)
     return oldsz;
-
   a = PGROUNDUP(oldsz);
+  struct proc* p = myproc();
   for(; a < newsz; a += PGSIZE){
+#ifndef NONE
+    //cprintf("allocuvm - ignore=%d, p->pgdir=%d, pgdir=%d\n", p->ignorePaging, p->pgdir, pgdir);
+    if(!p->ignorePaging && pgdir == p->pgdir){
+      if(p->numOfPhysPages >= MAX_PSYC_PAGES){ //frees a page if exceeded physical limit
+        swapOut();
+      }
+    }
+#endif
     mem = kalloc();
     if(mem == 0){
-      //cprintf("allocuvm out of memory\n");
+      cprintf("allocuvm out of memory\n");
       deallocuvm(pgdir, newsz, oldsz);
       return 0;
     }
     memset(mem, 0, PGSIZE);
     if(mappages(pgdir, (char*)a, PGSIZE, V2P(mem), PTE_W|PTE_U) < 0){
-      //cprintf("allocuvm out of memory (2)\n");
+      cprintf("allocuvm out of memory (2)\n");
       deallocuvm(pgdir, newsz, oldsz);
       kfree(mem);
       return 0;
     }
-    
-    #ifndef NONE
     pte_t* pg_entry = walkpgdir(pgdir,(const char*)(a),0);
-    if (myproc()->numOfPhysPages + myproc()->numOfDiskPages  < MAX_TOTAL_PAGES){
-        if(myproc()->numOfPhysPages < MAX_PSYC_PAGES)
-          addPage(pg_entry, (char*)a);
-    }else{ // Num of total pages excceded MAX_TOTAL_PAGES
-      //cprintf("process out of memory, num of phys pages: %d num of disk pages: %d num of total pages: %d \n",myproc()->numOfPhysPages,myproc()->numOfDiskPages,myproc()->numOfTotalPages);
-      myproc()->killed=1;
+#ifndef NONE 
+    if(pageExist(p,pg_entry) >= 0){ //page already exists, shouldn't happen
+      panic("page already exists");
+    }
+    if(!addPage(pg_entry,(char*)a)){ //tries to add page to page meta
+      cprintf("process out of memory\n");
+      p->killed=1;
       return oldsz;
     }
-    #endif
-
+#else
+    addPage(pg_entry,(char*)a);
+#endif
   }
   return newsz;
+}
+
+int pageExist(struct proc* p,uint* page){
+  for(int i=0;i<MAX_PSYC_PAGES;++i){
+    if(p->procPhysPages[i].pte == page && p->procPhysPages[i].isOccupied){
+      return i;
+    }
+    if(p->procSwappedFiles[i].pte == page && p->procSwappedFiles[i].isOccupied){
+      return i;
+    }
+  }
+  return -1;
 }
 
 int addPage(uint *pg_entry,char* a){
   //cprintf("add page func: %d \n", myproc()->numOfPhysPages); 
   struct proc* curProc = myproc();
+  if(curProc->ignorePaging){ return 1; }
   for(int i = 0; i < MAX_PSYC_PAGES; i++){
   //cprintf(" cur page address %p, cur page address, is occupied = %d \n",&curProc->procSwappedFiles[i],curProc->procPhysPages[i].isOccupied); 
     if(!curProc->procPhysPages[i].isOccupied){
@@ -289,25 +309,56 @@ deallocuvm(pde_t *pgdir, uint oldsz, uint newsz)
 {
   pte_t *pte;
   uint a, pa;
-
+  struct proc* p = myproc();
   if(newsz >= oldsz)
     return oldsz;
-
   a = PGROUNDUP(newsz);
   for(; a  < oldsz; a += PGSIZE){
     pte = walkpgdir(pgdir, (char*)a, 0);
-    if(!pte)
+    if(!pte){
       a = PGADDR(PDX(a) + 1, 0, 0) - PGSIZE;
-    else if((*pte & PTE_P) != 0){
+      continue;
+    }
+    if((*pte & PTE_P) != 0){ //page not present
       pa = PTE_ADDR(*pte);
       if(pa == 0)
         panic("kfree");
       char *v = P2V(pa);
       kfree(v);
+      if(pgdir == p->pgdir){
+        if(!removePage(pte)){
+          panic("remove page");
+        }
+      }
       *pte = 0;
+    }
+    if(!(*pte & PTE_P) && (*pte & PTE_PG)){ //page on swap file
+      if(pgdir == p->pgdir){
+        if(!removePage(pte)){
+          panic("remove page");
+        }
+      }
+      *pte=0;
     }
   }
   return newsz;
+}
+
+// Removes a page from the page meta data
+int removePage(uint* page){
+  struct proc* curProc = myproc();
+  if(curProc->ignorePaging){ return 1; }
+  for(int i = 0; i < MAX_PSYC_PAGES; i++){
+    if(curProc->procPhysPages[i].pte == page){
+      if(!removeNode(&curProc->procPhysPages[i])){ return 0; }
+      curProc->procPhysPages[i].isOccupied = 0; 
+      curProc->procPhysPages[i].va = 0;
+      curProc->procPhysPages[i].pte = 0;
+      curProc->numOfPhysPages--;
+      return 1;
+    }
+  }
+  return 0;
 }
 
 // Free a page table and all the physical memory pages
@@ -476,6 +527,7 @@ int swapIn(uint *pte, uint faultAdd){
       }
     if (!foundCell){
       if (curProc->procPhysPages[i].isOccupied == 0){ // look for a place in procPhysPages Array
+          curProc->procPhysPages[i].isOccupied = 1;
           curProc->procPhysPages[i].va = va;
           curProc->procPhysPages[i].pte = pte;
           foundCell = 1;

@@ -72,8 +72,8 @@ struct proc {
   int numOfProtectedPages;
   int numOfPageFaults;
   int totalNumOfPagedOut; 
-
   int numOfTotalPages;
+  int ignorePaging;
 };
 
 // Process memory is laid out contiguously, low addresses first:

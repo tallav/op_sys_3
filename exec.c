@@ -18,9 +18,7 @@ exec(char *path, char **argv)
   struct proghdr ph;
   pde_t *pgdir, *oldpgdir;
   struct proc *curproc = myproc();
-
   begin_op();
-
   if((ip = namei(path)) == 0){
     end_op();
     cprintf("exec: fail\n");
@@ -28,7 +26,6 @@ exec(char *path, char **argv)
   }
   ilock(ip);
   pgdir = 0;
-
   // Check ELF header
   if(readi(ip, (char*)&elf, 0, sizeof(elf)) != sizeof(elf))
     goto bad;
@@ -40,30 +37,21 @@ exec(char *path, char **argv)
 
   // Load program into memory.
   sz = 0;
-  
-  //init_page_meta(curproc);
+
+  initPageMetaData(curproc);
   if(curproc->swapFile){
     removeSwapFile(curproc);
-   // cprintf("exec - removed swap file to proc_id=%d proc_name=%s\n", curproc->pid, curproc->name);
   }
   char ignorePaging = 1;
-  //if(strncmp(path,"sh",3)!=0){ignorePaging = 0;}
-  if(strncmp(curproc->name,"init",4) != 0 || strncmp(curproc->name,"sh",2) != 0){ 
-    /*caused panic fileclose
-    if(curproc->swapFile){
-      removeSwapFile(curproc);
-      cprintf("exec - removed swap file to proc_id=%d proc_name=%s\n", curproc->pid, curproc->name);
-    }*/
-    ignorePaging = 0; 
-  }
+  if(strncmp(path,"sh",3)!=0){ignorePaging = 0;}
 #ifdef NONE
   ignorePaging = 1;
 #endif
   if(!ignorePaging){
     createSwapFile(curproc);
-    //cprintf("exec - created swap file to proc_id=%d proc_name=%s\n", curproc->pid, curproc->name);
   }
-
+  curproc->ignorePaging = ignorePaging;
+  
   for(i=0, off=elf.phoff; i<elf.phnum; i++, off+=sizeof(ph)){
     if(readi(ip, (char*)&ph, off, sizeof(ph)) != sizeof(ph))
       goto bad;
@@ -83,7 +71,6 @@ exec(char *path, char **argv)
   iunlockput(ip);
   end_op();
   ip = 0;
-
   // Allocate two pages at the next page boundary.
   // Make the first inaccessible.  Use the second as the user stack.
   sz = PGROUNDUP(sz);
@@ -91,7 +78,6 @@ exec(char *path, char **argv)
     goto bad;
   clearpteu(pgdir, (char*)(sz - 2*PGSIZE));
   sp = sz;
-
   // Push argument strings, prepare rest of stack in ustack.
   for(argc = 0; argv[argc]; argc++) {
     if(argc >= MAXARG)
@@ -102,11 +88,9 @@ exec(char *path, char **argv)
     ustack[3+argc] = sp;
   }
   ustack[3+argc] = 0;
-
   ustack[0] = 0xffffffff;  // fake return PC
   ustack[1] = argc;
   ustack[2] = sp - (argc+1)*4;  // argv pointer
-
   sp -= (3+argc+1) * 4;
   if(copyout(pgdir, sp, ustack, (3+argc+1)*4) < 0)
     goto bad;

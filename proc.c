@@ -117,8 +117,13 @@ found:
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
 
+  initPageMetaData(p);
 
+  return p;
+}
 
+// initializes the page meta data
+int initPageMetaData(struct proc* p){
   for(int i=0; i< MAX_PSYC_PAGES; i++){
     //cprintf("proc allocated in array of physpages,cell %d page address: %p \n", i, &p->procSwappedFiles[i]);
     //cprintf("proc allocated in array of swapped files,cell %d page address: %p\n", i, &p->procPhysPages[i]);
@@ -130,8 +135,7 @@ found:
     p->procPhysPages[i].offsetInFile = 0;
     p->procPhysPages[i].isOccupied = 0;
   }
-
-  return p;
+  return 1; 
 }
 
 //PAGEBREAK: 32
@@ -160,6 +164,7 @@ userinit(void)
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
+  p->ignorePaging = 1;
 
   // this assignment to p->state lets other cores
   // run this process. the acquire forces the above
@@ -218,6 +223,7 @@ fork(void)
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
+  np->ignorePaging = curproc->ignorePaging;
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
@@ -257,6 +263,10 @@ exit(void)
   struct proc *curproc = myproc();
   struct proc *p;
   int fd;
+
+#ifdef VERBOSE_TRUE
+  procdump();
+#endif
 
   if(curproc == initproc)
     panic("init exiting");
@@ -573,6 +583,7 @@ procdump(void)
     else
       state = "???";
     int allocatedMemoryPages= p->numOfPhysPages + p->numOfDiskPages;
+    cprintf("%d %d\n", p->numOfPhysPages, p->numOfDiskPages);
     cprintf("%d %s %d %d %d %d %d %s", p->pid, state, allocatedMemoryPages, p->numOfDiskPages,p->numOfProtectedPages,p->numOfPageFaults, p->totalNumOfPagedOut ,p->name);
     if(p->state == SLEEPING){
       getcallerpcs((uint*)p->context->ebp+2, pc);
@@ -597,14 +608,14 @@ struct page_meta_data *tail;
 // choose which page to swap-out, update (add it to this array) the procSwappedFiles data structure and flush the TLB
 void* choosePageToSwapOut(){
   // todo: choose which page to swap-out, update (add it to this array) the procSwappedFiles data structure and flush the TLB
-  //cprintf("choose page method");
+  cprintf("choose page method\n");
   struct page_meta_data* chosen = 0;
-  #ifdef LIFO
+#ifdef LIFO
   chosen = head;
   head = chosen->next;  
   cprintf("head %p chosen %p \n", chosen, head );
-  #endif
-  #ifdef SCFIFO
+#endif
+#ifdef SCFIFO
   struct page_meta_data *last;
   for(int i=0; i < myproc()->numOfPhysPages; i++){
     last = tail; //removeTail();
@@ -618,7 +629,7 @@ void* choosePageToSwapOut(){
       break;
     }
   }
-  #endif
+#endif
   return chosen->pte; //chosen->pmd->pte;
 }
 
@@ -637,15 +648,22 @@ struct page_meta_data* removeTail(){
 // Executes page-out from RAM to Disk.
 // Updates the procSwappedFiles array and adds the meta-date of the page to the file   
 int swapOut(){
-  //cprintf("swap out method");
+  cprintf("swap out method\n");
   struct proc *curProc = myproc();
   uint* pte = choosePageToSwapOut();
+  for (int i=0; i<MAX_PSYC_PAGES; i++){ 
+    if (curProc->procPhysPages[i].pte == pte){
+      curProc->procPhysPages[i].isOccupied = 0;
+      break;
+    }
+  }
   cprintf("pte of chosen page %d \n", pte);
   char* pa = (char*)(PTE_ADDR(*pte));
   char* va = (char*)(P2V((uint)(pa)));
   int offset = -1;
   for (int i=0; i<MAX_PSYC_PAGES; i++){ // find cell that isn't occupied in the array
     if (curProc->procSwappedFiles[i].isOccupied == 0){
+      curProc->procSwappedFiles[i].isOccupied = 1;
       curProc->procSwappedFiles[i].pte = pte;
       offset = curProc->procSwappedFiles[i].offsetInFile;
       break;
@@ -653,7 +671,11 @@ int swapOut(){
   }
   if (offset == -1)
     return -1;
-  offset = writeToSwapFile(curProc, (char*)pa, offset, PGSIZE);
+  cprintf("before write\n");
+  offset = writeToSwapFile(curProc, (char*)va, offset, PGSIZE);
+  cprintf("after write\n");
+  (*pte) &= ~PTE_P;
+  (*pte) |= PTE_PG;
   kfree((char*)V2P(va)); // Free the page of physical memory pointed at by the virtualAdd
   curProc->numOfPhysPages--;
   curProc->numOfDiskPages++;
@@ -668,7 +690,6 @@ int swap(uint *pte, uint faultAdd){
   swapIn(pte, faultAdd);
   return 1;
 }
-
 
 // Insert page to linked list in the first place
 void insertNode(struct page_meta_data* pmd){
@@ -694,3 +715,25 @@ void insertNode(struct page_meta_data* pmd){
   }
 }
 
+int removeNode(struct page_meta_data* pmd){
+  if(!head){ return -1; } // list is empty
+  struct page_meta_data *prev = head;
+  if(!prev->next){
+    if(prev == pmd){
+      head = 0;
+      return 1;
+    }else{
+      return 0;
+    }
+  }
+  struct page_meta_data *temp = head->next;
+  while(temp){
+    if(temp == pmd){ // found the link holding pmd
+      prev->next = temp->next;
+      return 0;
+    }
+    prev = temp;
+    temp = temp->next;
+  }
+  return 0;
+}

@@ -45,7 +45,7 @@ trap(struct trapframe *tf)
       exit();
     return;
   }
-
+  
   switch(tf->trapno){
   case T_PGFLT:
       checkIfNeedSwapping();
