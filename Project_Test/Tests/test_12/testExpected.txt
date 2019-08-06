@@ -1,7 +1,0 @@
-@
-30
-trap 14
-590
-trap 13
-0
-memory validation failed

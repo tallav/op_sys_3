@@ -1,4 +1,0 @@
-
-task2_7
-
-quitXV6
